@@ -1,0 +1,13 @@
+name = "hyper-gala-opt"
+uuid = "f1f2a118-5723-45cf-93b4-7c2448b618e6"
+authors = ["Dongyuan Li"]
+version = "0.1.0"
+
+[compat]
+julia = "1.4"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
