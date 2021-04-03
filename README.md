@@ -111,17 +111,231 @@ Hyperoptimizer{Hyperband, var"#363#370"}(10, (:a, :c), (range(1.0, stop=5.0, len
 ```
 
 
-## Hyperband
-`Hyperband(R=50, η=3, inner=RandomSampler())` Implements [Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization](https://arxiv.org/abs/1603.06560). The maximum amount of resources is given by `R` and the parameter `η` roughly determines the proportion of trials discarded between each round of successive halving. When using `Hyperband` the expression inside the `@hyperopt` macro takes the following form
-```julia
-ho = @hyperopt for i=18, sampler=Hyperband(R=50, η=3, inner=RandomSampler()), a = LinRange(1,5,1800), c = exp10.(LinRange(-1,3,1800))
-    if state === nothing # Query if state is initialized
-        res = optimize(resources=i, a, b) # if state is uninitialized, start a new optimization using the selected hyper parameters
-    else
-        res = optimize(resources=i, state=state) # If state has a value, continue the optimization from the state
-    end
-    minimum(res), get_state(res) # return the minimum value and a state from which to continue the optimization
+```
+function opt2(item,algorithm)
+    hohb = @hyperopt for i=item, sampler=Hyperband(R=50, η=3, inner=RandomSampler()),
+        a = LinRange(1,5,1800),
+        c = exp10.(LinRange(-1,3,1800))
+        if !(state === nothing)
+            x0,algorithm = state
+        else
+            x0 = [a,c]
+        end
+        println(i, " algorithm: ", typeof(algorithm).name.name)
+        res = Optim.optimize(x->f(x[1],c=x[2]), x0, algorithm, Optim.Options(time_limit=i+1, show_trace=false))
+        Optim.minimum(res), (Optim.minimizer(res), algorithm)
 end
+
+algorithm = [LBFGS(),SimulatedAnnealing(),ParticleSwarm()]
+item =100
+
+opt2(item,algorithm)
+
+
+1 algorithm: LBFGS
+1 algorithm: LBFGS
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: ParticleSwarm
+1 algorithm: ParticleSwarm
+1 algorithm: SimulatedAnnealing
+1 algorithm: ParticleSwarm
+1 algorithm: ParticleSwarm
+1 algorithm: ParticleSwarm
+1 algorithm: LBFGS
+1 algorithm: SimulatedAnnealing
+1 algorithm: ParticleSwarm
+1 algorithm: ParticleSwarm
+1 algorithm: LBFGS
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: ParticleSwarm
+1 algorithm: LBFGS
+1 algorithm: ParticleSwarm
+1 algorithm: LBFGS
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: SimulatedAnnealing
+1 algorithm: ParticleSwarm
+5 algorithm: LBFGS
+5 algorithm: LBFGS
+5 algorithm: ParticleSwarm
+5 algorithm: ParticleSwarm
+5 algorithm: ParticleSwarm
+5 algorithm: ParticleSwarm
+5 algorithm: ParticleSwarm
+5 algorithm: LBFGS
+5 algorithm: ParticleSwarm
+16 algorithm: LBFGS
+16 algorithm: LBFGS
+16 algorithm: ParticleSwarm
+50 algorithm: LBFGS
+5 algorithm: SimulatedAnnealing
+5 algorithm: SimulatedAnnealing
+5 algorithm: LBFGS
+5 algorithm: ParticleSwarm
+5 algorithm: SimulatedAnnealing
+5 algorithm: SimulatedAnnealing
+5 algorithm: LBFGS
+5 algorithm: LBFGS
+5 algorithm: SimulatedAnnealing
+5 algorithm: SimulatedAnnealing
+5 algorithm: ParticleSwarm
+5 algorithm: LBFGS
+16 algorithm: LBFGS
+16 algorithm: ParticleSwarm
+16 algorithm: LBFGS
+16 algorithm: LBFGS
+50 algorithm: LBFGS
+16 algorithm: ParticleSwarm
+16 algorithm: SimulatedAnnealing
+16 algorithm: LBFGS
+16 algorithm: ParticleSwarm
+16 algorithm: LBFGS
+16 algorithm: LBFGS
+50 algorithm: ParticleSwarm
+50 algorithm: LBFGS
+50 algorithm: ParticleSwarm
+50 algorithm: LBFGS
+50 algorithm: ParticleSwarm
+50 algorithm: SimulatedAnnealing
+Hyperoptimizer{Hyperband, var"#377#384"}(1000, (:algorithm, :a, :c), (Optim.AbstractOptimizer[LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true), SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true), ParticleSwarm{Any}(Any[], Any[], 0)], range(1.0, stop=5.0, length=1800), [0.1, 0.10051328280986045, 0.10102920021214988, 0.10154776572977833, 0.10206899295506665, 0.10259289555010268, 0.10311948724709945, 0.10364878184875503, 0.10418079322861445, 0.1047155353314332  …  954.9681399564245, 959.8698272584649, 964.7966740788197, 969.7488095569717, 974.7263634952538, 979.7294663622529, 984.7582492962279, 989.8128441085481, 994.893383287148, 1000.0]), Any[([2.9999998339852314, 100.00000000197451], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([3.000000003131005, 100.00000000003907], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([3.0344758189910745, 99.99067381178396], SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true)), ([2.9634026955589605, 100.00901853819506], SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true)), ([3.0611240437262497, 100.02772076345835], SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true)), ([2.9999990751978074, 100.00000023618091], ParticleSwarm{Any}(Any[], Any[], 0)), ([3.0000000584348268, 99.99999989821059], ParticleSwarm{Any}(Any[], Any[], 0)), ([2.940709730914526, 99.955326073839], SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true)), ([2.9999990497997313, 99.99999934468879], ParticleSwarm{Any}(Any[], Any[], 0)), ([3.0000001698712633, 99.99999946488013], ParticleSwarm{Any}(Any[], Any[], 0))  …  ([2.9999999993430535, 100.00000000002085], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([3.0000002016015817, 99.99999939155794], ParticleSwarm{Any}(Any[], Any[], 0)), ([2.9999999995016142, 99.99999999973159], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([3.0000000020270723, 100.00000000002304], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([2.999999363745535, 99.99999949397173], ParticleSwarm{Any}(Any[], Any[], 0)), ([2.9999999993430535, 100.00000000002085], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([2.9999998470327722, 100.00000001893419], ParticleSwarm{Any}(Any[], Any[], 0)), ([3.0000000033117793, 100.00000000010465], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true)), ([3.000000402838947, 100.0000001342489], ParticleSwarm{Any}(Any[], Any[], 0)), ([2.9557071237380774, 99.98482801444649], SimulatedAnnealing{typeof(Optim.default_neighbor!), typeof(Optim.log_temperature)}(Optim.default_neighbor!, Optim.log_temperature, true))], Any[10000.0, 10000.0, 10000.001275559882, 10000.001420696724, 10000.004504589448, 10000.0, 10000.0, 10000.005511095686, 10000.0, 10000.0  …  10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.002192048032], Hyperband(50, 3, (10000.0, 1, ([2.9999998339852314, 100.00000000197451], LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}, Optim.var"#17#19"}(10, LineSearches.InitialStatic{Float64}
+  alpha: Float64 1.0
+  scaled: Bool false
+, LineSearches.HagerZhang{Float64, Base.RefValue{Bool}}
+  delta: Float64 0.1
+  sigma: Float64 0.9
+  alphamax: Float64 Inf
+  rho: Float64 5.0
+  epsilon: Float64 1.0e-6
+  gamma: Float64 0.66
+  linesearchmax: Int64 50
+  psi3: Float64 0.1
+  display: Int64 0
+  mayterminate: Base.RefValue{Bool}
+, nothing, Optim.var"#17#19"(), Flat(), true))), RandomSampler()), var"#377#384"())
+```
+
+
+## hypergalaopt
+
+```julia
+pkg> add 
+using hypergalaopt
 ```
 a (simple) working example using `Hyperband` and Optim is
 ```julia
