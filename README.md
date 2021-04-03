@@ -5,37 +5,13 @@
 [![Coverage](https://codecov.io/gh/a626709452/hyper-gala-opt.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/a626709452/hyper-gala-opt.jl)
 [![Coverage](https://coveralls.io/repos/github/a626709452/hyper-gala-opt.jl/badge.svg?branch=master)](https://coveralls.io/github/a626709452/hyper-gala-opt.jl?branch=master)
 
-A package to perform hyperparameter optimization. Currently supports random search, [latin hypercube sampling](https://en.wikipedia.org/wiki/Latin_hypercube_sampling) and [Bayesian optimization](https://arxiv.org/abs/1807.02811).
+A package to perform hyperparameter optimization for GalacticOpt https://github.com/SciML/GalacticOptim.jl.
+
+And this work was guilded by Mohamed Tarek https://github.com/mohamed82008
 
 # Usage
 
 This package was designed to facilitate the addition of optimization logic to already existing code. I usually write some code and try a few hyper parameters by hand before I realize I have to take a more structured approach to finding good hyper parameters. I therefore designed this package such that the optimization logic is wrapped around existing code, and the user only has to specify which variables to optimize and candidate values (ranges) for these variables.
-
-## High-level example
-In order to add hyper-parameter optimization to the existing pseudo code
-```julia
-a = manually_selected_value
-b = other_value
-cost = train_model(a,b)
-```
-we wrap it in `@hyperopt` like this
-```julia
-ho = @hyperopt for i = number_of_samples,
-                   a = candidate_values,
-                   b = other_candidate_values,
-cost = train_model(a,b)
-end
-```
-
-## Details
-
-1. The macro `@hyperopt` takes a for-loop with an initial argument determining the number of samples to draw (`i` below).
-2. The sample strategy can be specified by specifying the special keyword `sampler = Sampler(opts...)`. Available options are `RandomSampler()`, `LHSampler()`, `CLHSampler(dims=[Continuous(), Categorical(2), Continuous(), ...])`, `Hyperband(R=50, η=3, inner=RandomSampler())` and `GPSampler(Min)/GPSampler(Max)`.
-3. The subsequent arguments to the for-loop specifies names and candidate values for different hyper parameters (`a = LinRange(1,2,1000), b = [true, false], c = exp10.(LinRange(-1,3,1000))` below).
-4. A useful strategy to achieve log-uniform sampling is logarithmically spaced vector, e.g. `c = exp10.(LinRange(-1,3,1000))`.
-5. In the example below, the parameters `i,a,b,c` can be used within the expression sent to the macro and they will hold a new value sampled from the corresponding candidate vector each iteration.
-
-The resulting object `ho::Hyperoptimizer` holds all the sampled parameters and function values and has `minimum/minimizer` and `maximum/maximizer` properties (e.g., `ho.minimizer`). It can also be plotted using `plot(ho)` (uses `Plots.jl`). The exact syntax to use for various samplers is shown in the [testfile](https://github.com/baggepinnen/Hyperopt.jl/blob/master/test/runtests.jl), which should be fairly readable.
 
 
 ## Full example
@@ -45,122 +21,93 @@ using Hyperopt
 f(x,a,b=true;c=10) = sum(@. x + (a-3)^2 + (b ? 10 : 20) + (c-100)^2) # Function to minimize
 
 # Main macro. The first argument to the for loop is always interpreted as the number of iterations
-ho = @hyperopt for i=50,
-            sampler = RandomSampler(), # This is default if none provided
-            a = LinRange(1,5,1000),
-            b = [true, false],
-            c = exp10.(LinRange(-1,3,1000))
-   print(i, "\t", a, "\t", b, "\t", c, "   \t")
-   x = 100
-   @show f(x,a,b,c=c)
-end
-1   3.910910910910911   false   0.15282140360258697     f(x, a, b, c=c) = 10090.288832348499
-2   3.930930930930931   true    6.1629662551329405      f(x, a, b, c=c) = 8916.255534433481
-3   2.7617617617617616  true    146.94918006248173      f(x, a, b, c=c) = 2314.282265997491
-4   3.6666666666666665  false   0.3165924111983522      f(x, a, b, c=c) = 10057.226192959602
-5   4.783783783783784   true    34.55719936762139       f(x, a, b, c=c) = 4395.942039196544
-6   2.5895895895895897  true    4.985373463873895       f(x, a, b, c=c) = 9137.947692504491
-7   1.6206206206206206  false   301.6334347259197       f(x, a, b, c=c) = 40777.94468684398
-8   1.012012012012012   true    33.00034791125285       f(x, a, b, c=c) = 4602.905476253546
-9   3.3583583583583585  true    193.7703337477989       f(x, a, b, c=c) = 8903.003911886599
-10  4.903903903903904   true    144.26439512181574      f(x, a, b, c=c) = 2072.9615255755252
-11  2.2332332332332334  false   119.97177354358843      f(x, a, b, c=c) = 519.4596697509966
-12  2.369369369369369   false   117.77987011971193      f(x, a, b, c=c) = 436.52147646611473
-13  3.2182182182182184  false   105.44427935261685      f(x, a, b, c=c) = 149.68779686009242
-⋮
 
-Hyperopt.Hyperoptimizer
-  iterations: Int64 50
-  params: Tuple{Symbol,Symbol,Symbol}
-  candidates: Array{AbstractArray{T,1} where T}((3,))
-  history: Array{Any}((50,))
-  results: Array{Any}((50,))
-  sampler: Hyperopt.RandomSampler
-
-
-julia> best_params, min_f = ho.minimizer, ho.minimum
-(Real[1.62062, true, 100.694], 112.38413353985818)
-
-julia> printmin(ho)
-a = 1.62062
-b = true
-c = 100.694
-```
-
-We can also visualize the result by plotting the hyperoptimizer
-```
-plot(ho)
-```
-![window](figs/ho.svg)
-
-This may allow us to determine which parameters are most important for the performance etc.
-
-
-The type `Hyperoptimizer` is iterable, it iterates for the specified number of iterations, each iteration providing a sample of the parameter vector, e.g.
-```julia
-ho = Hyperoptimizer(10, a = LinRange(1,2,50), b = [true, false], c = randn(100))
-for (i,a,b,c) in ho
-    println(i, "\t", a, "\t", b, "\t", c)
+function Hyperopll(item,optimize)
+    hohb = @hyperopt for i=item, sampler=Hyperband(R=50, η=3, inner=RandomSampler()), a = LinRange(1,5,1800), c = exp10.(LinRange(-1,3,1800))
+        if !(state === nothing)
+            a,c = state
+        end
+        res = Optim.optimize(x->f(x[1],c=x[2]), [a,c], optimize, Optim.Options(f_calls_limit=i))
+        @show Optim.minimum(res), Optim.minimizer(res)
+    end
 end
 
-1   1.2244897959183674  false   0.8179751164732062
-2   1.7142857142857142  true    0.6536272580487854
-3   1.4285714285714286  true    -0.2737451706680355
-4   1.6734693877551021  false   -0.12313108128547606
-5   1.9795918367346939  false   -0.4350837079334295
-6   1.0612244897959184  true    -0.2025613848798039
-7   1.469387755102041   false   0.7464858339748051
-8   1.8571428571428572  true    -0.9269021128132274
-9   1.163265306122449   true    2.6554272337516966
-10  1.4081632653061225  true    1.112896676939024
-```
 
-If used in this way, the hyperoptimizer **can not** keep track of the function values like it did when `@hyperopt` was used. To manually store the same data, consider a pattern like
-```julia
-ho = Hyperoptimizer(10, a = LinRange(1,2), b = [true, false], c = randn(100))
-for (i,a,b,c) in ho
-    res = computations(a,b,c)
-    push!(ho.history, [a,b,c])
-end
-```
 
-# Categorical variables
-`RandomSampler` and `CLHSampler` support categorical variables which do not have a natural floating point representation, such as functions:
-```julia
-@hyperopt for i=20, fun = [tanh, σ, relu]
-    train_network(fun)
-end
-# or
-@hyperopt for i=20, sampler=CLHSampler(dims=[Categorical(3), Continuous()]),
-                    fun   = [tanh, σ, relu],
-                    param = LinRange(0,1,20)
-    train_network(fun, param)
-end
-```
+Hyperopll(100,SimulatedAnnealing())
 
-# Which sampler to use?
-`RandomSampler` is a good baseline and the default if none is chosen. `GPSampler` fits a Gaussian process to the data and tries to use this model to figure out where the best point to sample next is (using expected improvement). This is somewhat expensive and pays off when the function to optimize is expensive. `Hyperband(R=50, η=3, inner=RandomSampler())` runs the expression with varying amount of resources, allocating more resources to promising hyperparameters. See below for more info on `Hyperband`.
 
-If number of iterations is small, `LHSampler` work better than random search. Caveat: `LHSampler` needs all candidate vectors to be of equal length, i.e.,
-```julia
-hob = @hyperopt for i=100, sampler = LHSampler(),
-                            a = LinRange(1,5,100),
-                            b = repeat([true, false],50),
-                            c = exp10.(LinRange(-1,3,100))
-    f(a,b,c=c)
-end
-```
-where all candidate vectors are of length 100. The candidates for `b` thus had to be repeated 50 times.
 
-The categorical `CLHSampler` circumvents this
-```julia
-hob = @hyperopt for i=100,
-                    sampler=CLHSampler(dims=[Continuous(), Categorical(2), Continuous()]),
-                    a = LinRange(1,5,100),
-                    b = [true, false],
-                    c = exp10.(LinRange(-1,3,100))
-    f(a,b,c=c)
-end
+(Optim.minimum(res), Optim.minimizer(res)) = (19508.219519722436, [3.1081357602285173, 2.4899603816109868])
+(Optim.minimum(res), Optim.minimizer(res)) = (11841.997757878282, [2.745414118954975, 142.91774625848208])
+(Optim.minimum(res), Optim.minimizer(res)) = (19724.31938148781, [4.233006635491073, 1.3957451418822049])
+(Optim.minimum(res), Optim.minimizer(res)) = (19819.49910666349, [5.037761502294901, 0.9275687452697414])
+(Optim.minimum(res), Optim.minimizer(res)) = (12292.896700088888, [1.951639799888827, 52.127276649644116])
+(Optim.minimum(res), Optim.minimizer(res)) = (16456.75384730264, [2.3531049263254906, 180.35132465657486])
+(Optim.minimum(res), Optim.minimizer(res)) = (19888.622935955143, [3.161200667037243, 0.5585752802179126])
+(Optim.minimum(res), Optim.minimizer(res)) = (19914.536661242768, [3.6281267370761534, 0.4302148337913695])
+(Optim.minimum(res), Optim.minimizer(res)) = (57743.21665338569, [0.6565353490103842, 318.48964466723646])
+(Optim.minimum(res), Optim.minimizer(res)) = (19536.117784305567, [4.013958881508101, 2.3522162479241064])
+(Optim.minimum(res), Optim.minimizer(res)) = (18868.732862493576, [3.359088382434686, 5.8267345897617355])
+(Optim.minimum(res), Optim.minimizer(res)) = (15988.601518685293, [4.461923290717065, 22.627754982956898])
+(Optim.minimum(res), Optim.minimizer(res)) = (19229.823206380177, [2.7231795441912174, 3.928429924272472])
+(Optim.minimum(res), Optim.minimizer(res)) = (19827.390417868868, [4.426888977536429, 0.8770742677827643])
+(Optim.minimum(res), Optim.minimizer(res)) = (19183.613739282813, [4.351815079959664, 4.178361862925719])
+(Optim.minimum(res), Optim.minimizer(res)) = (19456.890980678025, [3.5360727430966463, 2.754930167683395])
+(Optim.minimum(res), Optim.minimizer(res)) = (10198.859426833715, [2.4674819344080046, 114.09169440995414])
+(Optim.minimum(res), Optim.minimizer(res)) = (19459.41757879685, [3.493620313281034, 2.7417154285396377])
+(Optim.minimum(res), Optim.minimizer(res)) = (19949.90879357347, [4.8866036687048355, 0.26861316430670357])
+(Optim.minimum(res), Optim.minimizer(res)) = (17534.35246260517, [1.1823235130628127, 13.218386078651392])
+(Optim.minimum(res), Optim.minimizer(res)) = (17169.557217103382, [2.2711481525526622, 15.329899066507227])
+(Optim.minimum(res), Optim.minimizer(res)) = (18820.265352838913, [4.82657031684269, 6.101496318010792])
+(Optim.minimum(res), Optim.minimizer(res)) = (17679.366754762028, [2.9766517482767503, 12.368006928855198])
+(Optim.minimum(res), Optim.minimizer(res)) = (10496.808140802108, [3.3257365202890496, 77.71318693663318])
+(Optim.minimum(res), Optim.minimizer(res)) = (14276.008579768983, [3.138966092273485, 34.60895116153756])
+(Optim.minimum(res), Optim.minimizer(res)) = (230339.09920587606, [3.114508060033352, 569.4029037977718])
+(Optim.minimum(res), Optim.minimizer(res)) = (14595.583697031449, [3.5230106790598406, 32.2112829678785])
+(Optim.minimum(res), Optim.minimizer(res)) = (10120.442437288153, [1.8350647145389276, 110.91262402306805])
+(Optim.minimum(res), Optim.minimizer(res)) = (10430.518621053505, [3.1975185233708463, 79.25199750611088])
+(Optim.minimum(res), Optim.minimizer(res)) = (11841.997757878282, [2.745414118954975, 142.91774625848208])
+(Optim.minimum(res), Optim.minimizer(res)) = (12060.640269670277, [1.1243133311843017, 54.64449240510362])
+(Optim.minimum(res), Optim.minimizer(res)) = (13935.419462426184, [3.8940709610908986, 37.27344980359022])
+(Optim.minimum(res), Optim.minimizer(res)) = (14595.583697031449, [3.5230106790598406, 32.2112829678785])
+(Optim.minimum(res), Optim.minimizer(res)) = (15988.601518685293, [4.461923290717065, 22.627754982956898])
+(Optim.minimum(res), Optim.minimizer(res)) = (16363.345259665362, [1.1817051143744897, 179.74985306177228])
+(Optim.minimum(res), Optim.minimizer(res)) = (16997.81962153971, [3.4767007384277977, 16.34838687780318])
+(Optim.minimum(res), Optim.minimizer(res)) = (10034.574482879398, [1.896423776540741, 105.77551750048534])
+(Optim.minimum(res), Optim.minimizer(res)) = (10270.366875292417, [2.7645597675012294, 83.55884909170477])
+(Optim.minimum(res), Optim.minimizer(res)) = (11349.054945440592, [2.6656069414290493, 136.72796110217627])
+(Optim.minimum(res), Optim.minimizer(res)) = (10000.084576759915, [2.963523426848681, 100.28852420960126])
+(Optim.minimum(res), Optim.minimizer(res)) = (19219.226832657205, [4.4603346133821145, 3.9943009219027417])
+(Optim.minimum(res), Optim.minimizer(res)) = (19689.34112122886, [4.01955299530275, 1.5708293597948337])
+(Optim.minimum(res), Optim.minimizer(res)) = (77917.46943477707, [3.9022216103238603, 360.6082412951343])
+(Optim.minimum(res), Optim.minimizer(res)) = (19507.547385368598, [1.3962015917207913, 2.506537572849537])
+(Optim.minimum(res), Optim.minimizer(res)) = (32480.015597606427, [3.2089374843087155, 249.9332249460875])
+(Optim.minimum(res), Optim.minimizer(res)) = (27542.19933976198, [4.146192329071706, 232.44200837689965])
+(Optim.minimum(res), Optim.minimizer(res)) = (15902.475807681552, [4.718015371802818, 23.19163957703692])
+(Optim.minimum(res), Optim.minimizer(res)) = (18466.2635691901, [1.4370176751824733, 8.000974703845857])
+(Optim.minimum(res), Optim.minimizer(res)) = (19035.097392542786, [3.5274413405680867, 4.948334058918004])
+(Optim.minimum(res), Optim.minimizer(res)) = (19798.870644648356, [1.894293831792954, 1.016930445060731])
+(Optim.minimum(res), Optim.minimizer(res)) = (17927.25971824189, [4.679277569444263, 10.980677686882776])
+(Optim.minimum(res), Optim.minimizer(res)) = (15559.638641577618, [4.843862341876381, 25.45981745902531])
+(Optim.minimum(res), Optim.minimizer(res)) = (14441.124184147877, [3.0747918634343794, 33.358281907464])
+(Optim.minimum(res), Optim.minimizer(res)) = (15016.200748972042, [4.551521136427422, 29.191854062295484])
+(Optim.minimum(res), Optim.minimizer(res)) = (16802.637099215644, [4.0199416060795, 17.52820592265602])
+(Optim.minimum(res), Optim.minimizer(res)) = (17777.965587277533, [-1.746810856430153, 11.935061608090543])
+(Optim.minimum(res), Optim.minimizer(res)) = (12099.046958151672, [-1.5770028406549101, 54.41383978499276])
+(Optim.minimum(res), Optim.minimizer(res)) = (18033.538007737425, [0.8490470395442843, 10.39580696697654])
+(Optim.minimum(res), Optim.minimizer(res)) = (14015.47017423282, [3.4327275525387537, 36.63373988392487])
+(Optim.minimum(res), Optim.minimizer(res)) = (18895.19008289618, [6.413917484323758, 5.747492074181881])
+(Optim.minimum(res), Optim.minimizer(res)) = (10000.038249927666, [2.8614170270998507, 99.86199750985273])
+(Optim.minimum(res), Optim.minimizer(res)) = (19095.65879890885, [-2.558581973401294, 4.790961745463325])
+(Optim.minimum(res), Optim.minimizer(res)) = (19157.228160349438, [6.395026551374893, 4.36683653112329])
+(Optim.minimum(res), Optim.minimizer(res)) = (10000.003435279907, [3.044592146255232, 99.96196290760204])
+(Optim.minimum(res), Optim.minimizer(res)) = (11886.28597062848, [5.757221180851651, 56.65621495544786])
+(Optim.minimum(res), Optim.minimizer(res)) = (16542.52379841476, [-7.178885114358116, 19.757155482601064])
+(Optim.minimum(res), Optim.minimizer(res)) = (534099.8813630396, [0.39734603782476574, 823.9427515732116])
+(Optim.minimum(res), Optim.minimizer(res)) = (16650.13902520201, [0.7154133816772206, 18.483623184139304])
+(Optim.minimum(res), Optim.minimizer(res)) = (398773.8292021539, [10.928511597096684, 723.4668939935854])
+Hyperoptimizer{Hyperband, var"#363#370"}(10, (:a, :c), (range(1.0, stop=5.0, length=1800), [0.1, 0.10051328280986045, 0.10102920021214988, 0.10154776572977833, 0.10206899295506665, 0.10259289555010268, 0.10311948724709945, 0.10364878184875503, 0.10418079322861445, 0.1047155353314332  …  954.9681399564245, 959.8698272584649, 964.7966740788197, 969.7488095569717, 974.7263634952538, 979.7294663622529, 984.7582492962279, 989.8128441085481, 994.893383287148, 1000.0]), Any[[3.1081357602285173, 2.4899603816109868], [2.745414118954975, 142.91774625848208], [4.233006635491073, 1.3957451418822049], [5.037761502294901, 0.9275687452697414], [1.951639799888827, 52.127276649644116], [2.3531049263254906, 180.35132465657486], [3.161200667037243, 0.5585752802179126], [3.6281267370761534, 0.4302148337913695], [0.6565353490103842, 318.48964466723646], [4.013958881508101, 2.3522162479241064]  …  [6.413917484323758, 5.747492074181881], [2.8614170270998507, 99.86199750985273], [-2.558581973401294, 4.790961745463325], [6.395026551374893, 4.36683653112329], [3.044592146255232, 99.96196290760204], [5.757221180851651, 56.65621495544786], [-7.178885114358116, 19.757155482601064], [0.39734603782476574, 823.9427515732116], [0.7154133816772206, 18.483623184139304], [10.928511597096684, 723.4668939935854]], Any[19508.219519722436, 11841.997757878282, 19724.31938148781, 19819.49910666349, 12292.896700088888, 16456.75384730264, 19888.622935955143, 19914.536661242768, 57743.21665338569, 19536.117784305567  …  18895.19008289618, 10000.038249927666, 19095.65879890885, 19157.228160349438, 10000.003435279907, 11886.28597062848, 16542.52379841476, 534099.8813630396, 16650.13902520201, 398773.8292021539], Hyperband(50, 3, (10000.003435279907, 50, [3.044592146255232, 99.96196290760204]), RandomSampler()), var"#363#370"())
 ```
 
 
