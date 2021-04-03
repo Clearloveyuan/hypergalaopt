@@ -1,21 +1,10 @@
-module hypergalaopt
+module hypergalaopt,Optim
+
 
 export hypergalaop
-
 include("Hyperopt.jl")
-
 using Optim
 using Hyperopt
-using Base.Threads: threadid, nthreads
-using LinearAlgebra, Statistics, Random
-using Juno
-using MacroTools
-using MacroTools: postwalk, prewalk
-using RecipesBase
-using LatinHypercubeSampling
-using Distributed
-using ThreadPools
-using BayesianOptimization, GaussianProcesses
 
 
 function hypergalaop(arg_item, arg_optimize, arg_function, arg_label)
@@ -47,7 +36,6 @@ function hypergalaop(arg_item, arg_optimize, arg_function, arg_label)
             @show Optim.minimum(res), (Optim.minimizer(res), algorithm)
         end
     end
-
 end
 
 end

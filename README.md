@@ -334,39 +334,24 @@ Hyperoptimizer{Hyperband, var"#377#384"}(1000, (:algorithm, :a, :c), (Optim.Abst
 ## hypergalaopt
 
 ```julia
-pkg> add 
+pkg> add https://github.com/a626709452/hypergalaopt.git
 using hypergalaopt
 ```
 a (simple) working example using `Hyperband` and Optim is
 ```julia
-using Optim
-f(a;c=10) = sum(@. 100 + (a-3)^2 + (c-100)^2)
-hohb = @hyperopt for i=18, sampler=Hyperband(R=50, η=3, inner=RandomSampler()), a = LinRange(1,5,1800), c = exp10.(LinRange(-1,3,1800))
-    if !(state === nothing)
-        a,c = state
-    end
-    res = Optim.optimize(x->f(x[1],c=x[2]), [a,c], SimulatedAnnealing(), Optim.Options(f_calls_limit=i))
-    Optim.minimum(res), Optim.minimizer(res)
-end
-plot(hohb)
-```
-and a more complicated example that also explores different Optim optimizers as the inner optimizer is
-```julia
-hohb = @hyperopt for i=18, sampler=Hyperband(R=50, η=3, inner=RandomSampler()),
-    algorithm = [SimulatedAnnealing(), ParticleSwarm(), NelderMead(), BFGS(), NewtonTrustRegion()],
-    a = LinRange(1,5,1800),
-    c = exp10.(LinRange(-1,3,1800))
-    if !(state === nothing)
-        x0,algorithm = state
-    else
-        x0 = [a,c]
-    end
-    println(i, " algorithm: ", typeof(algorithm).name.name)
-    res = Optim.optimize(x->f(x[1],c=x[2]), x0, algorithm, Optim.Options(time_limit=i+1, show_trace=false))
-    Optim.minimum(res), (Optim.minimizer(res), algorithm)
-end
+arg_item = 10
+arg_optimize = Optim.SimulatedAnnealing()
+#arg_optimize = [Optim.SimulatedAnnealing(), Optim.BFGS()]
+arg_function = f(a;c=10) = sum(@. 100 + (a-3)^2 + (c-100)^2)
+arg_label=1
+hypergalaop(arg_item,arg_optimize,arg_function,arg_label)
 ```
 
-# Parallel execution
-- The macro `@phyperopt` works in the same way as `@hyperopt` but distributes all computation on available workers. The usual caveats apply, code must be loaded on all workers etc.
-- The macro `@thyperopt` uses `ThreadPools.tmap` to evaluate the objective on all available threads. Beware of high memory consumption if your objective allocates a lot of memory.
+and a more complicated example that also explores different Optim optimizers as the inner optimizer is
+```julia
+arg_item = 10
+arg_optimize = [Optim.SimulatedAnnealing(), Optim.BFGS()]
+arg_function = f(a;c=10) = sum(@. 100 + (a-3)^2 + (c-100)^2)
+arg_label=1
+hypergalaop(arg_item,arg_optimize,arg_function,arg_label)
+```
